@@ -1,0 +1,27 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "${workspaceFolder}/src/**",
+                "${workspaceFolder}/.pio/libdeps/esp32c3/**",
+                "~/.platformio/packages/framework-arduinoespressif32/cores/esp32/**",
+                "~/.platformio/packages/framework-arduinoespressif32/libraries/**",
+                "~/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32c3/include/**",
+                "~/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32c3/qio_qspi/include/**",
+                "~/.platformio/packages/framework-arduinoespressif32/variants/esp32c3/**"
+            ],
+            "defines": [
+                "ESP32",
+                "SERIAL_ENABLE",
+                "STARTUP_BOOST",
+                "WIFI_ENABLE"
+            ],
+            "compilerPath": "~/.platformio/packages/toolchain-riscv32-esp/bin/riscv32-esp-elf-gcc",
+            "cStandard": "c11",
+            "cppStandard": "gnu++11",
+            "intelliSenseMode": "linux-gcc-x64"
+        }
+    ],
+    "version": 4
+}

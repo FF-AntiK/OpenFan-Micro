@@ -1,0 +1,22 @@
+{
+    "build": {
+        "context": ".",
+        "dockerfile": "Dockerfile"
+    },
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-vscode.cpptools"
+            ],
+            "settings": {
+                "C_Cpp.clang_format_style": "file",
+                "editor.formatOnSave": true,
+                "extensions.ignoreRecommendations": true
+            }
+        }
+    },
+    "name": "Firmware",
+    "postCreateCommand": "../.devcontainer/postCreateCommand.sh",
+    "privileged": true,
+    "workspaceFolder": "/workspaces/OpenFan-Micro/Firmware"
+}

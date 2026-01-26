@@ -5,14 +5,6 @@ Import("env")  # noqa
 import os
 import shutil
 import subprocess
-
-if os.environ.get("ESPHOME_USE_SUBPROCESS") is None:
-    try:
-        import esptool
-    except ImportError:
-        env.Execute("$PYTHONEXE -m pip install esptool")
-else:
-    import subprocess
 from SCons.Script import ARGUMENTS
 
 # Copy over the default sdkconfig.
