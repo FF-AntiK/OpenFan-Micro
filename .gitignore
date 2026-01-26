@@ -241,6 +241,6 @@ upload/*
 .pio
 
 # Ignore auto-generated files
-Firmware/src/binary_data.ino
+Firmware/src/web_data.h
 Firmware/data/
 Firmware/src/version.h

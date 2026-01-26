@@ -29,7 +29,7 @@ class espembed:
         self.web_data_header = ""
         self.web_data_content = ""
         # self.output_path = output_directory
-        self.output_filename = "binary_data.ino"
+        self.output_filename = "web_data"
 
     def add_file(self, filepath, handler, encoding=None, template_processor=None, handler_generator=None):
         extension = os.path.splitext(filepath)[1]
@@ -100,11 +100,11 @@ class espembed:
                 yield batch
 
         ret = ','.join('0x{:02X}'.format(x) for x in data)
-        ret = ",\n".join(", ".join(l) for l in _batched(ret.split(","), 16))
-        return ret
+        ret = ",\n  ".join(", ".join(l) for l in _batched(ret.split(","), 13))
+        return "  " + ret
 
     def generate_c_const_name(self, handler):
-        ret = f"web_data_{handler}"
+        ret = f"{self.output_filename}_{handler}"
         ret = ret.replace('/', '_')
         ret = ret.replace('\\', '_')
         ret = ret.replace('-', '_')
@@ -124,7 +124,7 @@ class espembed:
     def gen_handler_default(self, data_const_name, item):
         gzip = ""
         if item['gzipped']:
-            gzip = 'response->addHeader("Content-Encoding", "gzip");\n\t\t'
+            gzip = 'response->addHeader("Content-Encoding", "gzip");\n    '
 
         if item['template_processor'] is None:
             template_processor = ""
@@ -132,21 +132,27 @@ class espembed:
             template_processor = f", {item['template_processor']}"
 
           # request->send_P(200, "{encoding}", {variable_name});
-        ret = f'''server.on("{item['handler']}", HTTP_GET, [](AsyncWebServerRequest *request){{
-        AsyncWebServerResponse *response = request->beginResponse_P(200, "{item['encoding']}", {data_const_name}, {item['size']}{template_processor});
-        {gzip}request->send(response);
-    }});'''
+        ret = f"server.on(\"{item['handler']}\", HTTP_GET, "
+        ret += "[](AsyncWebServerRequest *request) {\n"
+        ret += "    AsyncWebServerResponse *response = request->beginResponse_P"
+        ret += f"(200, \"{item['encoding']}\", {data_const_name}, "
+        ret += f"{item['size']}{template_processor});\n"
+        ret += f"    {gzip}request->send(response);\n"
+        ret += "  });" 
         return ret
 
     def gen_handler_image(self, data_const_name, item):
         gzip = ""
         if item['gzipped']:
-            gzip = 'response->addHeader("Content-Encoding", "gzip");\n\t\t'
+            gzip = 'response->addHeader("Content-Encoding", "gzip");\n    '
 
-        ret = f'''server.on("{item['handler']}", HTTP_GET, [](AsyncWebServerRequest *request){{
-        AsyncWebServerResponse *response = request->beginResponse_P(200, "{item['encoding']}", {data_const_name}, {item['size']});
-        {gzip}request->send(response);
-    }});'''
+        ret = f"server.on(\"{item['handler']}\", HTTP_GET, "
+        ret += "[](AsyncWebServerRequest *request) {\n"
+        ret += "    AsyncWebServerResponse *response = request->beginResponse_P"
+        ret += f"(200, \"{item['encoding']}\", {data_const_name}, "
+        ret += f"{item['size']});\n"
+        ret += f"    {gzip}request->send(response);\n"
+        ret += "  });"
         return ret
 
     def set_template_processor(self, extension, function_name):
@@ -163,11 +169,12 @@ class espembed:
         request_handlers = io.StringIO()
 
         data_section.write("\n\n//---- BEGIN DATA SECTION ----\n\n")
-        request_handlers.write("\n\n//---- Request handler ----\n")
-        request_handlers.write("void server_init_handlers(void)\n{\n")
-
+        request_handlers.write("// Request handler\n")
+        request_handlers.write(f"void {self.output_filename}_init(AsyncWebServer& server) ")
+        request_handlers.write("{\n")
 
         # Iterate over all items and generate content for output file
+        i = 0
         for handler, item in self.files.items():
             '''
             # Write forward declarations
@@ -184,33 +191,45 @@ class espembed:
             c_server_handler = item['handler_generator'](c_data_const_name, self.files[handler])
 
             data_section.write(f"// Content of `{handler}`\n")
-            data_section.write(f"const {item['ctype']} {c_data_const_name}[{item['size']}] PROGMEM = {{\n{c_hex_str_data}\n}};\n")
+            data_section.write(f"const {item['ctype']} {c_data_const_name}[{item['size']}] PROGMEM = {{\n{c_hex_str_data}\n}};\n\n")
             # f.write(f"const uint8_t {item['c_data_const_name']}[] PROGMEM = {{\n{item['c_hex_str_data']}\n}};\n")
 
             # --- Create request handler for item
             # Write server request handlers
-            request_handlers.write(f"\t{c_server_handler}\n")
+            if i == 0:
+                request_handlers.write(f"  {c_server_handler}\n")
+            else:
+                request_handlers.write(f"\n  {c_server_handler}\n")
+            
+            i += 1
 
         # -- Finalize data and handler sections
-        data_section.write("\n\n//---- END DATA SECTION ----\n\n")
+        data_section.write("//---- END DATA SECTION ----\n")
         request_handlers.write("}\n")
 
         # Merge content
-        content = data_section.getvalue() + '\n\n' + request_handlers.getvalue()
-        self.write_ino_file(content);
+        content = data_section.getvalue() + '\n' + request_handlers.getvalue()
+        self.write_h_file(content)
         data_section.close()
         request_handlers.close()
         forward_declarations.close()
 
-    def write_ino_file(self, content):
-        filename = os.path.join(self.output_directory, self.output_filename)
+    def write_h_file(self, content):
+        headerdef = self.output_filename.upper() + "_H"
+        filename = os.path.join(self.output_directory, self.output_filename + ".h")
         with open(filename, mode='w', encoding='utf-8') as f:
             f.write("// This file was auto generated using ESP32 Data Embed script\n")
             f.write("// Please do not manually modify this file\n")
             f.write("// since any changes to this file will be overwritten on next build.\n")
-            f.write(f"// Generated on {datetime.today().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
-            f.write(content)
-            f.write("\n// ---- End of auto generated file\n")
+            f.write(f"// Generated on {datetime.today().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            f.write("#ifdef WIFI_ENABLE\n")
+            f.write(f"#ifndef {headerdef}\n")
+            f.write(f"#define {headerdef}\n\n")
+            f.write("#include \"template.h\"")
+            f.write(f"{content}\n")
+            f.write(f"#endif /* {headerdef} */\n")
+            f.write("#endif /* WIFI_ENABLE */\n")
+            f.write("// ---- End of auto generated file\n")
 
     def run(self):
         for handler, file_data in self.files.items():
@@ -220,8 +239,8 @@ class espembed:
 
 def main(data_dir, src_dir):
     embed = espembed(data_dir, src_dir)
-    embed.set_template_processor('.htm', 'template_const_processor')
-    embed.set_template_processor('.html', 'template_const_processor')
+    embed.set_template_processor('.htm', 'template_process')
+    embed.set_template_processor('.html', 'template_process')
     embed.add_directory('data', 'data')
     embed.run()
 

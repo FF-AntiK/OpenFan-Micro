@@ -1,6 +1,5 @@
 import datetime
 
-
 def write_version_to_file(filepath, contents):
     with open(filepath, "w", encoding="utf-8") as f:
         f.write(contents)
@@ -12,14 +11,14 @@ def make_version_string():
     day = now.strftime('%d')
 
     version_header = \
-f"""#ifndef __OPENFAN_MICRO_FW_VERSION_H_INC__
-#define __OPENFAN_MICRO_FW_VERSION_H_INC__
+f"""#ifndef VERSION_H
+#define VERSION_H
 
 #define VERSION_MAJOR   {year}
 #define VERSION_MINOR   {month}
 #define VERSION_PATCH   {day}
 
-#endif
+#endif /* VERSION_H */
 """
 
     print(f"New version {year}-{month}-{day}")
